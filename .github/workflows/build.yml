@@ -6,27 +6,28 @@ jobs:
     container: devkitpro/devkitarm:latest
     steps:
     - uses: actions/checkout@v4
-    - name: Minimal test compile
-      shell: bash
+    - name: Diagnose
       run: |
-        echo "=== Test simple compile ==="
-        echo 'int x;' | arm-none-eabi-gcc -c -x c - -o /tmp/test.o 2>&1
-        echo "=== Simple compile OK ==="
-        ls -la /tmp/test.o
-    - name: Try plugin.c alone
-      shell: bash
-      run: |
-        DEVKITPRO=/opt/devkitpro
-        echo "=== Compile plugin.c ==="
-        arm-none-eabi-gcc \
-          -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfp \
-          -Wall -O2 -mword-relocations -fomit-frame-pointer \
-          -ffunction-sections -fno-strict-aliasing \
-          -I$DEVKITPRO/libctru/include \
-          -c source/plugin.c -o plugin.o 2>&1
-        echo "=== plugin.c OK ==="
+        echo "=== env =="
+        env | sort
+        echo "=== which arm-none-eabi-gcc ==="
+        which arm-none-eabi-gcc
+        echo "=== gcc --version ==="
+        arm-none-eabi-gcc --version 2>&1 || true
+        echo "=== gcc -v ==="
+        arm-none-eabi-gcc -v 2>&1 || true
+        echo "=== try compile to file ==="
+        echo 'int x;' > /tmp/test.c
+        arm-none-eabi-gcc -c /tmp/test.c -o /tmp/test.o 2>/tmp/compile_err.txt || true
+        echo "gcc rc=$?"
+        cat /tmp/compile_err.txt 2>/dev/null || echo "no error file"
+        echo "=== try as ==="
+        arm-none-eabi-as --version 2>&1 || true
+        echo "=== ls /opt/devkitpro/devkitARM/bin/ ==="
+        ls /opt/devkitpro/devkitARM/bin/
+        echo "=== cc1 location ==="
+        find /opt/devkitpro -name cc1 2>/dev/null || echo "cc1 not found"
     - name: Build
-      shell: bash
       run: |
         set -e
         DEVKITARM=/opt/devkitpro/devkitARM
@@ -42,8 +43,8 @@ jobs:
           source/bootloader.s source/plugin.c source/plgldr.c \
           -L$DEVKITPRO/libctru/lib -lc -lctru -lgcc \
           -Wl,-Map,build/ykw2_farm.map,--gc-sections -T source/3ds.ld \
-          -o build/ykw2_farm.elf 2>&1
-        python3 tools/build_3gx.py build/ykw2_farm.elf build/ykw2_farm.3gx ykw2_farm.plgInfo 2>&1
+          -o build/ykw2_farm.elf
+        python3 tools/build_3gx.py build/ykw2_farm.elf build/ykw2_farm.3gx ykw2_farm.plgInfo
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
