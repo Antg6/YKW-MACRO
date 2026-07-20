@@ -6,7 +6,60 @@ jobs:
     container: devkitpro/devkitarm:latest
     steps:
     - uses: actions/checkout@v4
-    - name: Build
+    - name: Debug info
+      shell: bash
+      run: |
+        set -e
+        echo "=== OS ==="
+        cat /etc/os-release 2>/dev/null || echo "no os-release"
+        echo "=== which gcc ==="
+        which arm-none-eabi-gcc || echo "gcc not in PATH"
+        echo "=== gcc version ==="
+        arm-none-eabi-gcc --version 2>&1 || true
+        echo "=== ls source ==="
+        ls -la source/
+        echo "=== ls include ==="
+        ls -la include/ 2>/dev/null || echo "no include dir"
+        echo "=== ls /opt/devkitpro ==="
+        ls /opt/devkitpro/ 2>/dev/null || echo "no devkitpro"
+        echo "=== ls libctru/include ==="
+        ls /opt/devkitpro/libctru/include/ 2>/dev/null || echo "no libctru include"
+        echo "=== ls libctru/lib ==="
+        ls /opt/devkitpro/libctru/lib/ 2>/dev/null || echo "no libctru lib"
+        echo "=== python3 ==="
+        which python3 || echo "no python3"
+        echo "=== python ==="
+        which python || echo "no python"
+    - name: Compile objects only
+      shell: bash
+      run: |
+        set -e
+        DEVKITARM=/opt/devkitpro/devkitARM
+        DEVKITPRO=/opt/devkitpro
+        PATH=$DEVKITARM/bin:$PATH
+        arm-none-eabi-gcc \
+          -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfp \
+          -Wall -O2 -mword-relocations -fomit-frame-pointer \
+          -ffunction-sections -fno-strict-aliasing \
+          -Iinclude -I$DEVKITPRO/libctru/include \
+          -nostartfiles \
+          -c source/bootloader.s -o build-bootloader.o 2>&1
+        arm-none-eabi-gcc \
+          -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfp \
+          -Wall -O2 -mword-relocations -fomit-frame-pointer \
+          -ffunction-sections -fno-strict-aliasing \
+          -Iinclude -I$DEVKITPRO/libctru/include \
+          -nostartfiles \
+          -c source/plugin.c -o build-plugin.o 2>&1
+        arm-none-eabi-gcc \
+          -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfp \
+          -Wall -O2 -mword-relocations -fomit-frame-pointer \
+          -ffunction-sections -fno-strict-aliasing \
+          -Iinclude -I$DEVKITPRO/libctru/include \
+          -nostartfiles \
+          -c source/plgldr.c -o build-plgldr.o 2>&1
+        echo "=== All objects compiled OK ==="
+    - name: Link
       shell: bash
       run: |
         set -e
@@ -18,13 +71,19 @@ jobs:
           -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfp \
           -Wall -O2 -mword-relocations -fomit-frame-pointer \
           -ffunction-sections -fno-strict-aliasing \
-          -Iinclude -I$DEVKITPRO/libctru/include \
           -nostartfiles \
-          source/bootloader.s source/plugin.c source/plgldr.c \
+          build-bootloader.o build-plugin.o build-plgldr.o \
           -L$DEVKITPRO/libctru/lib -lc -lctru -lgcc \
           -Wl,-Map,build/ykw2_farm.map,--gc-sections -T source/3ds.ld \
           -o build/ykw2_farm.elf 2>&1
+        echo "=== Link OK ==="
+        ls -la build/ykw2_farm.elf
+    - name: Build 3gx
+      shell: bash
+      run: |
+        set -e
         python3 tools/build_3gx.py build/ykw2_farm.elf build/ykw2_farm.3gx ykw2_farm.plgInfo 2>&1
+        echo "=== 3gx OK ==="
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
