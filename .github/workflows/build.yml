@@ -10,7 +10,7 @@ jobs:
         set -ex
         sudo apt-get update -qq
         sudo apt-get install -y -qq wget
-        wget -q https://apt.devkitpro.org/install-devkitpro-pacman
+        wget -q -U "dkp-apt" https://apt.devkitpro.org/install-devkitpro-pacman
         chmod +x install-devkitpro-pacman
         sudo ./install-devkitpro-pacman
         sudo dkp-pacman -Syyu --noconfirm
