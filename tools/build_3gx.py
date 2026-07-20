@@ -1,6 +1,6 @@
 import struct, sys, os
 
-_3GX_MAGIC_V2 = 0x3230303024584733  # "3GX$0002"
+_3GX_MAGIC = 0x3230303024584733  # "3GX$0002"
 
 EI_NIDENT = 16
 ET_EXEC = 2
@@ -86,6 +86,15 @@ class ElfReader:
 def build_3gx(elf_path, out_path, plginfo_path):
     info = parse_plginfo(plginfo_path)
     elf = ElfReader(elf_path)
+
+    # Embedded exe load function: returns 0 (mov r0,#0; bx lr; NOP terminator)
+    exe_load_func = struct.pack('<III',
+        0xE3A00000,  # mov r0, #0
+        0xE12FFF1E,  # bx lr
+        0xE320F000,  # nop (terminator)
+    )
+    exe_load_func += b'\x00' * (32 * 4 - len(exe_load_func))
+
     with open(out_path, 'wb') as f:
         f.write(b'\x00' * 148)
         meta = {}
@@ -109,26 +118,33 @@ def build_3gx(elf_path, out_path, plginfo_path):
         f.write(elf.code_data)
         f.write(elf.rodata_data)
         f.write(elf.data_data)
+
+        # Embedded exe load function after segment data
+        exe_off = f.tell()
+        f.write(exe_load_func)
+
         f.seek(0)
-        f.write(struct.pack('<Q', _3GX_MAGIC_V2))
-        f.write(struct.pack('<I', 0x01000000))
-        f.write(struct.pack('<I', 0))
+        f.write(struct.pack('<Q', _3GX_MAGIC))
+        f.write(struct.pack('<I', 2))   # version
+        f.write(struct.pack('<I', 0))   # reserved
         f.write(struct.pack('<II', meta.get('author', (0,0))[1], meta.get('author', (0,0))[0]))
         f.write(struct.pack('<II', meta.get('title', (0,0))[1], meta.get('title', (0,0))[0]))
         f.write(struct.pack('<II', meta.get('summary', (0,0))[1], meta.get('summary', (0,0))[0]))
         f.write(struct.pack('<II', meta.get('description', (0,0))[1], meta.get('description', (0,0))[0]))
-        f.write(struct.pack('<I', 0))
-        f.write(b'\x00' * 4)
-        f.write(b'\x00' * 16)
-        f.write(b'\x00' * 16)
+        f.write(struct.pack('<I', 1))   # flags: embeddedExeLoadFunc=1
+        f.write(struct.pack('<I', 0))   # exeLoadChecksum
+        f.write(b'\x00' * 16)          # builtInLoadExeArgs[4]
+        f.write(b'\x00' * 16)          # builtInSwapSaveLoadArgs[4]
         f.write(struct.pack('<IIIIIIIIII',
             code_off, rodata_off, data_off,
             elf.code_size, elf.rodata_size, elf.data_size, elf.bss_size,
-            0, 0, 0))
+            exe_off,   # exeLoadFuncOffset
+            0,         # swapSaveFuncOffset
+            0))        # swapLoadFuncOffset
         f.write(struct.pack('<II', len(info['targets']), target_off))
         f.write(b'\x00' * 12)
     total = os.path.getsize(out_path)
-    print(f"Built: {out_path} ({total} bytes, code={elf.code_size} rodata={elf.rodata_size} data={elf.data_size} bss={elf.bss_size})")
+    print(f"Built: {out_path} ({total} bytes, code={elf.code_size} rodata={elf.rodata_size} data={elf.data_size} bss={elf.bss_size}, exeLoadFuncOff={exe_off})")
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
