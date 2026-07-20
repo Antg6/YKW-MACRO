@@ -1,0 +1,27 @@
+#ifndef YKW2_FARM_H
+#define YKW2_FARM_H
+
+#define WALK_RIGHT_MS   900
+#define WALK_UP_MS      700
+#define WALK_LEFT_MS    900
+#define WALK_DOWN_MS    700
+#define COLLECT_TAPS    5
+#define COLLECT_GAP_MS  300
+#define ZONE_EXIT_MS    3000
+#define ZONE_ENTER_MS   3000
+#define MAX_CYCLES      200
+
+#define KEY_A       0x00000001
+#define KEY_B       0x00000002
+#define KEY_SELECT  0x00000004
+#define KEY_START   0x00000008
+#define KEY_DRIGHT  0x00000010
+#define KEY_DLEFT   0x00000020
+#define KEY_DUP     0x00000040
+#define KEY_DDOWN   0x00000080
+#define KEY_CPAD_RIGHT 0x00100000
+#define KEY_CPAD_LEFT  0x00200000
+#define KEY_CPAD_UP    0x00400000
+#define KEY_CPAD_DOWN  0x00800000
+
+#endif
