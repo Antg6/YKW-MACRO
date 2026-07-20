@@ -6,6 +6,7 @@
 #include "ykw2_farm.h"
 
 #define HID_PAD_ADDR 0x10146000
+#define LED_REG      0x10202204
 
 static Handle       thread;
 static Handle       onProcessExitEvent, resumeExitEvent;
@@ -19,6 +20,15 @@ static vu32 *ourHidSharedMem;
 
 static void kernelWrite32(u32 physAddr, u32 val) {
     *(vu32 *)(physAddr | 0x80000000) = val;
+}
+
+static void ledFlash(u32 count) {
+    for (u32 i = 0; i < count; i++) {
+        svcCustomBackdoor(kernelWrite32, LED_REG, 0x01FF9933, 0);
+        svcSleepThread(100000000);
+        svcCustomBackdoor(kernelWrite32, LED_REG, 0, 0);
+        svcSleepThread(100000000);
+    }
 }
 
 static Result initHid(void) {
@@ -118,6 +128,8 @@ static void farmCycle(void) {
 static void ThreadMain(void *arg) {
     (void)arg;
 
+    ledFlash(2);
+
     while (1) {
         if (svcWaitSynchronization(onProcessExitEvent, 50000000) != 0x09401BFE)
             goto exit;
@@ -137,6 +149,7 @@ static void ThreadMain(void *arg) {
             }
 
             if (g_active && g_cycle < MAX_CYCLES) {
+                ledFlash(1);
                 farmCycle();
                 g_cycle++;
             }
@@ -166,6 +179,8 @@ void __system_allocateHeaps(PluginHeader *header) {
 }
 
 void main(void) {
+    ledFlash(3);
+
     srvInit();
     plgLdrInit();
 
