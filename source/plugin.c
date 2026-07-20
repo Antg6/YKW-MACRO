@@ -1,5 +1,4 @@
 #include <3ds.h>
-#include <3ds/plglloader.h>
 #include <string.h>
 #include "plgldr.h"
 #include "ykw2_farm.h"
@@ -129,8 +128,7 @@ extern u32 __ctru_linear_heap;
 u32 __ctru_heap_size        = 0;
 u32 __ctru_linear_heap_size = 0;
 
-void __system_allocateHeaps(PluginHeader *header) {
-    (void)header;
+void __system_allocateHeaps(void) {
     __ctru_heap = 0;
     __ctru_linear_heap = 0;
     fake_heap_start = 0;
