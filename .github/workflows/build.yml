@@ -16,9 +16,9 @@ jobs:
           -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfp \
           -Wall -O2 -mword-relocations -fomit-frame-pointer \
           -ffunction-sections -fno-strict-aliasing \
-          -Iinclude -I$DEVKITPRO/libctru/include \
+          -I. \
           -nostartfiles \
-          source/bootloader.s source/csvc.s source/plugin.c source/plgldr.c \
+          bootloader.s csvc.s plugin.c plgldr.c \
           -L$DEVKITPRO/libctru/lib -lc -lctru -lgcc \
           -Wl,-Map,build/ykw2_farm.map,--gc-sections -T 3ds.ld \
           -o build/ykw2_farm.elf
