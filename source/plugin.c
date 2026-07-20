@@ -1,4 +1,5 @@
 #include <3ds.h>
+#include <3ds/plglloader.h>
 #include <string.h>
 #include "plgldr.h"
 #include "ykw2_farm.h"
@@ -8,7 +9,7 @@
 static Handle       thread;
 static Handle       hidHandle;
 static u8           stack[0x400] __attribute__((aligned(8)));
-static vu32        *hidSharedMem;
+static vu32        *g_hidSharedMem;
 static volatile int g_active = 0;
 static volatile int g_cycle = 0;
 
@@ -28,12 +29,12 @@ static Result initHid(void) {
         MEMPERM_READ | MEMPERM_WRITE, MEMPERM_DONTCARE);
     if (R_FAILED(rc)) return rc;
 
-    hidSharedMem = buf;
+    g_hidSharedMem = buf;
     return 0;
 }
 
 static void injectButtons(u32 buttons) {
-    u32 cur = (~hidSharedMem[6]) & 0xFFF;
+    u32 cur = (~g_hidSharedMem[6]) & 0xFFF;
     u32 val = cur & (~buttons) & 0xFFF;
     *(vu32 *)HID_PAD_REG = val;
 }
@@ -61,7 +62,7 @@ static void holdCpad(u32 buttons, s16 x, s16 y, u32 durationMs) {
     u32 elapsed = 0;
     while (elapsed < durationMs) {
         injectButtons(buttons);
-        hidSharedMem[7] = (u32)(u16)(x + 0x800) | ((u32)(u16)(y + 0x800) << 16);
+        g_hidSharedMem[7] = (u32)(u16)(x + 0x800) | ((u32)(u16)(y + 0x800) << 16);
         svcSleepThread(5000000);
         elapsed += 5;
     }
@@ -102,9 +103,9 @@ static void ThreadMain(void *arg) {
     while (1) {
         svcSleepThread(5000000);
 
-        if (!hidSharedMem) continue;
+        if (!g_hidSharedMem) continue;
 
-        u32 state = (~hidSharedMem[6]) & 0xFFF;
+        u32 state = (~g_hidSharedMem[6]) & 0xFFF;
 
         if ((state & (KEY_L | KEY_R)) == (KEY_L | KEY_R)) {
             g_active = !g_active;
