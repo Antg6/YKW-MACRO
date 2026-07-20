@@ -1,6 +1,7 @@
 #include <3ds.h>
 #include <string.h>
 #include "plgldr.h"
+#include "csvc.h"
 
 static Handle       thread;
 static Handle       onProcessExitEvent, resumeExitEvent;
