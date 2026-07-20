@@ -5,21 +5,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Setup devkitpro
-      run: |
-        set -e
-        echo "=== Install devkitpro pacman ==="
-        wget https://apt.devkitpro.org/install-devkitpro-pacman
-        chmod +x ./install-devkitpro-pacman
-        sudo ./install-devkitpro-pacman
-        sudo dkp-pacman -Syyu --noconfirm
-        sudo dkp-pacman -S --needed --noconfirm 3ds-dev
-        yes | sudo dkp-pacman -Scc
-        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
-        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
-        echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+    - uses: devkitpro/github-action-install-devkitpro@v3
+      with:
+        packages: 3ds-dev
     - name: Build
-      shell: bash
       run: |
         set -e
         mkdir -p build
