@@ -8,7 +8,6 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build
       run: |
-        cd ykw2-farm
         export DEVKITARM=/opt/devkitpro/devkitARM
         export DEVKITPRO=/opt/devkitpro
         export PATH=$DEVKITARM/bin:$PATH
@@ -28,4 +27,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ykw2-farm-plugin
-        path: ykw2-farm/build/*.3gx
+        path: build/*.3gx
