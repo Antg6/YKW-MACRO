@@ -7,30 +7,25 @@ static Handle       onProcessExitEvent, resumeExitEvent;
 static u8           stack[0x1000] __attribute__((aligned(8)));
 
 static volatile int g_active = 0;
-static volatile int g_cycle = 0;
+static vu32 *ourHidMem = NULL;
 
-static void waitMs(u32 ms) {
-    svcSleepThread((u64)ms * 1000000);
-}
+static Result mapHid(void) {
+    Handle h;
+    Result rc = srvGetServiceHandle(&h, "hid:USER");
+    if (R_FAILED(rc)) return rc;
 
-static void pressA(void) {
-    for (int i = 0; i < 5; i++) {
-        hidTapKey(KEY_A);
-        waitMs(300);
-    }
-}
+    u32 *c = getThreadCommandBuffer();
+    c[0] = IPC_MakeHeader(0xA, 0, 0);
+    rc = svcSendSyncRequest(h);
+    if (R_FAILED(rc)) return rc;
 
-static void farmCycle(void) {
-    hidHoldKey(KEY_DRIGHT);
-    waitMs(600);
-    hidReleaseKey(KEY_DRIGHT);
-    hidTapKey(KEY_A);
-    waitMs(3000);
-    hidHoldKey(KEY_DLEFT);
-    waitMs(600);
-    hidReleaseKey(KEY_DLEFT);
-    hidTapKey(KEY_A);
-    waitMs(3000);
+    Handle memHandle = c[3];
+    static vu32 buf[0x2b0 / 4] __attribute__((aligned(0x1000)));
+    rc = svcMapMemoryBlock(memHandle, (u32)buf, MEMPERM_READ, MEMPERM_DONTCARE);
+    if (R_FAILED(rc)) return rc;
+
+    ourHidMem = buf;
+    return 0;
 }
 
 static void ThreadMain(void *arg) {
@@ -40,22 +35,13 @@ static void ThreadMain(void *arg) {
         if (svcWaitSynchronization(onProcessExitEvent, 50000000) != 0x09401BFE)
             goto exit;
 
-        u32 state = hidSharedMem[6];
-
-        if ((state & (KEY_L | KEY_R)) == (KEY_L | KEY_R)) {
-            g_active = !g_active;
-            if (g_active) {
-                g_cycle = 0;
-                PLGLDR__DisplayMessage("YKW2", "Started");
-            } else {
-                PLGLDR__DisplayMessage("YKW2", "Stopped");
+        if (ourHidMem) {
+            u32 state = ourHidMem[6];
+            if ((state & 0x0300) == 0x0300) {
+                g_active = !g_active;
+                PLGLDR__DisplayMessage("YKW2", g_active ? "ON" : "OFF");
+                svcSleepThread(500000000);
             }
-            waitMs(300);
-        }
-
-        if (g_active && g_cycle < 200) {
-            farmCycle();
-            g_cycle++;
         }
     }
 
@@ -85,7 +71,9 @@ void main(void) {
     srvInit();
     plgLdrInit();
 
-    PLGLDR__DisplayMessage("YKW2", "Plugin loaded!");
+    PLGLDR__DisplayMessage("YKW2", "Loaded!");
+
+    mapHid();
 
     svcControlProcess(CUR_PROCESS_HANDLE, PROCESSOP_GET_ON_EXIT_EVENT,
         (u32)&onProcessExitEvent, (u32)&resumeExitEvent);
