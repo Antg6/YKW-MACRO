@@ -3,36 +3,25 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: devkitpro/devkitarm:latest
     steps:
     - uses: actions/checkout@v4
-    - name: Diagnose
-      run: |
-        echo "=== env =="
-        env | sort
-        echo "=== which arm-none-eabi-gcc ==="
-        which arm-none-eabi-gcc
-        echo "=== gcc --version ==="
-        arm-none-eabi-gcc --version 2>&1 || true
-        echo "=== gcc -v ==="
-        arm-none-eabi-gcc -v 2>&1 || true
-        echo "=== try compile to file ==="
-        echo 'int x;' > /tmp/test.c
-        arm-none-eabi-gcc -c /tmp/test.c -o /tmp/test.o 2>/tmp/compile_err.txt || true
-        echo "gcc rc=$?"
-        cat /tmp/compile_err.txt 2>/dev/null || echo "no error file"
-        echo "=== try as ==="
-        arm-none-eabi-as --version 2>&1 || true
-        echo "=== ls /opt/devkitpro/devkitARM/bin/ ==="
-        ls /opt/devkitpro/devkitARM/bin/
-        echo "=== cc1 location ==="
-        find /opt/devkitpro -name cc1 2>/dev/null || echo "cc1 not found"
-    - name: Build
+    - name: Setup devkitpro
       run: |
         set -e
-        DEVKITARM=/opt/devkitpro/devkitARM
-        DEVKITPRO=/opt/devkitpro
-        PATH=$DEVKITARM/bin:$PATH
+        echo "=== Install devkitpro pacman ==="
+        wget https://apt.devkitpro.org/install-devkitpro-pacman
+        chmod +x ./install-devkitpro-pacman
+        sudo ./install-devkitpro-pacman
+        sudo dkp-pacman -Syyu --noconfirm
+        sudo dkp-pacman -S --needed --noconfirm 3ds-dev
+        yes | sudo dkp-pacman -Scc
+        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
+        echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+    - name: Build
+      shell: bash
+      run: |
+        set -e
         mkdir -p build
         arm-none-eabi-gcc \
           -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfp \
