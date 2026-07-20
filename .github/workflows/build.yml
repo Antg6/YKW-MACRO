@@ -8,7 +8,6 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build
       run: |
-        cd ykw2-farm
         export DEVKITARM=/opt/devkitpro/devkitARM
         export DEVKITPRO=/opt/devkitpro
         export PATH=$DEVKITARM/bin:$PATH
@@ -21,11 +20,11 @@ jobs:
           -nostartfiles \
           source/bootloader.s source/plugin.c source/plgldr.c \
           -L$DEVKITPRO/libctru/lib -lc -lctru -lgcc \
-          -Wl,-Map,build/ykw2_farm.map,--gc-sections -T 3ds.ld \
+          -Wl,-Map,build/ykw2_farm.map,--gc-sections -T source/3ds.ld \
           -o build/ykw2_farm.elf
         python3 tools/build_3gx.py build/ykw2_farm.elf build/ykw2_farm.3gx ykw2_farm.plgInfo
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
         name: ykw2-farm-plugin
-        path: ykw2-farm/build/*.3gx
+        path: build/*.3gx
